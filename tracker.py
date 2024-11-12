@@ -1,3 +1,4 @@
+import pickle
 import socket
 import threading
 import os
@@ -21,6 +22,9 @@ class TrackerServer:
         self.create_tables()
         self.files: Set[str] = set()  # storage file keep in tracker
         self.peers_with_file: Dict[str, Set[int]] = {}  # peers_with_file[file_name] = list peer
+        #file_peice_peer
+        self.online_peer = []
+
 
     def create_tables(self):
         with self.lock:
@@ -59,7 +63,6 @@ class TrackerServer:
                     self.show_available_files(client_socket)
                 elif info['type'] == REQUEST_FILE:
                     self.show_peer_hold_file_service(client_socket, info['file_name'])
-
                 # ... handle other message types ...
             except Exception as e:
                 print(f"Error handling peer {addr}: {e}")
@@ -99,6 +102,7 @@ class TrackerServer:
                     self.sendMsg(client_socket,
                                  {'type': LOGIN_SUCCESSFUL, 'message': 'Login successful', 'peer_id': peer_id})
                     self.updateLogin(user, ip, port)
+                    self.online_peer.append((ip, port))
                 else:
                     self.sendMsg(client_socket, {'type': LOGIN_FAILED, 'message': 'Incorrect password'})
             else:
@@ -113,11 +117,15 @@ class TrackerServer:
         print(f"Registering file: {metainfo['file_name']}")
         self.files.add(metainfo['file_name'])
         file_name = metainfo['file_name']
+
         # Initialize the list for this file if it doesn't exist
         if file_name not in self.peers_with_file:
             self.peers_with_file[file_name] = set()
 
-        self.peers_with_file[file_name].add(peer_id)
+        for peer in self.online_peer:
+            self.peers_with_file[file_name].add(peer)
+
+
         # Create magnet link
         magnet_link = create_magnet_link(metainfo, HOST, PORT)
 
@@ -133,22 +141,17 @@ class TrackerServer:
         print('File name with peer_id:')
         for file in self.peers_with_file:
             print(file, self.peers_with_file[file])
-
         self.sendMsg(client_socket, {
             'type': REGISTER_FILE_SUCCESSFUL,
             'message': 'File registered successfully',
-            'magnet_link': magnet_link
+            'magnet_link': magnet_link,
+            'online_peers': pickle.dumps(self.online_peer)
         })
 
     def show_peer_hold_file_service(self, client_socket, file_name: str):
         list_peers = self.peers_with_file[file_name]
-        ip_port_list = []
-        for peer_id in list_peers:
-            record = self.getIpandPortByPeerID(peer_id)
-            if record:
-                ip_port_list.append(record)
 
-        if not len(ip_port_list):
+        if not len(list_peers):
             self.sendMsg(client_socket,
                          {'type': SHOW_PEER_HOLD_FILE_FAILED, 'message': 'No peer holds this file is online'})
             return
@@ -158,7 +161,7 @@ class TrackerServer:
 
         self.sendMsg(client_socket, {'type': SHOW_PEER_HOLD_FILE,
                                      'metainfo': metainfo,
-                                     'ip_port_list': ip_port_list})
+                                     'ip_port_list': list_peers})
 
     def logout_service(self, client_socket, info):
         peer_id = info['peer_id']

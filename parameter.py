@@ -34,4 +34,5 @@ VERIFY_MAGNET_LINK_SUCCESSFUL = 'verify_magnet_link_successful'
 VERIFY_MAGNET_LINK_FAILED = 'verify_magnet_link_failed'
 REQUEST_PIECE = 'request_piece'
 SEND_PIECE = 'send_piece'
+VERIFY_FILE = 'check_file_in_peer'
 

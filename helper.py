@@ -79,6 +79,19 @@ def split_file_into_piece(path,piece_size):
 
 
     return pieces
+def split_file_with_index(path, piece_size):
+    pieces = []
+    with open(path, 'rb') as f:
+        idx = 0
+        while True:
+            piece = f.read(piece_size)
+            if not piece:
+                break
+            temp = {'piece': piece, 'id': idx}
+            pieces.append(temp)
+            idx += 1
+        return pieces
+
 
 def split_file_into_piece_to_send(path, piece_size, index):
     pieces = []
