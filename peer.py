@@ -373,6 +373,8 @@ class PeerClient:
         response = pickle.loads(response_data)
         return response['pieces']
 
+    import threading
+
     def download_file(self):
         files = self.get_list_files_to_download()
         if not files or (len(files) == 1 and os.path.exists(f"repo_{self.user_name}/{files[0]}")):
@@ -425,13 +427,24 @@ class PeerClient:
                     for t in self.file_pieces[file_name]:
                         peer_and_piece[self.port].append(t)
 
-            # Request pieces from each peer
-            for peer in peer_and_piece:
-                pieces_info = {'file_name': file_name, 'piece_index': peer_and_piece[peer]}
-                response = self.send_request_piece(ip, peer, pieces_info)
+            # Function to handle piece request for a single peer
+            def request_pieces_from_peer(ip, port, pieces_info):
+                response = self.send_request_piece(ip, port, pieces_info)
                 piece_ids = [piece['piece_index'] for piece in response]
                 print(f"Received piece IDs from {ip}:{port} -> {piece_ids}")
                 piece_received.extend(response)  # Collect the pieces
+
+            # Creating and starting threads for each peer
+            threads = []
+            for peer in peer_and_piece:
+                pieces_info = {'file_name': file_name, 'piece_index': peer_and_piece[peer]}
+                thread = threading.Thread(target=request_pieces_from_peer, args=(ip, peer, pieces_info))
+                threads.append(thread)
+                thread.start()
+
+            # Wait for all threads to complete
+            for thread in threads:
+                thread.join()
 
             # Sort the pieces by 'piece_index' to ensure the correct order
             piece_received.sort(key=lambda x: x['piece_index'])
@@ -472,31 +485,6 @@ class PeerClient:
         finally:
             temp_socket.close()  # Always close the temporary socket
 
-    def listen_verify_magnet_link_response(self, another_peer_socket, info):
-        try:
-            # Receive the verification request
-            magnet_link = info['magnet_link']
-            file_name = info['file_name']
-            print(f'Received magnet link from {magnet_link}')
-            # Verify the magnet link
-            with open(f"repo_{self.user_name}/{file_name}_magnet", 'rb') as f:
-                magnet_link_to_verify = f.read().decode('utf-8')
-
-            print(f'Magnet link to verify: {magnet_link_to_verify}')
-
-            if magnet_link == magnet_link_to_verify:
-                print(f"Verified magnet link for {file_name}")
-                response = {'type': VERIFY_MAGNET_LINK_SUCCESSFUL}
-            else:
-                print(f"Failed to verify magnet link for {file_name}")
-                response = {'type': VERIFY_MAGNET_LINK_FAILED}
-
-            # Send the verification response
-            send_msg(another_peer_socket, response)
-        except Exception as e:
-            print(f"Error handling magnet link verification: {e}")
-            error_response = pickle.dumps({'type': 'ERROR', 'message': str(e)})
-            send_msg(another_peer_socket, error_response)
 
     def ininitialize_server_socket(self):
         try:
