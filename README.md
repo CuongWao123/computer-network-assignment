@@ -18,6 +18,20 @@ Most of these are part of Python’s standard library. To ensure everything is s
 ```bash
 pip install socket pickle threading os
 ```
+**Database Configuration Guide**
+
+Make sure to install PostgreSQL and configure it correctly to work with the provided code:
+
+```python
+self.conn = psycopg2.connect(
+    dbname="socket",  # Reaplace with your database name
+    user="postgres",
+    password="cuongdola231",# Replace with your user and passsword
+    host="",  # Replace with "localhost" or your database server's IP
+    port="5432"  # Default PostgreSQL port
+)
+
+```
 ### Usage Instructions
 **Step 1: Start the Tracker**
 
