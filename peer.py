@@ -156,9 +156,6 @@ class PeerClient:
         }
         self.files[file_name] = metainfo
         self.pieces[file_name] = {i: piece for i, piece in enumerate(pieces)}
-        # metainfo_path = os.path.join(f"repo_{self.user_name}", f"{file_name}.torrent")
-        # with open(metainfo_path, 'wb') as f:
-        #     pickle.dump(metainfo, f)
         return metainfo
 
     def distribute_pieces_to_peers(self, metainfo, verify_result):
@@ -372,8 +369,6 @@ class PeerClient:
             raise ConnectionError("Connection closed while receiving data")
         response = pickle.loads(response_data)
         return response['pieces']
-
-    import threading
 
     def download_file(self):
         files = self.get_list_files_to_download()

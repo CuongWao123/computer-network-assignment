@@ -124,7 +124,7 @@ class TrackerServer:
 
         for peer in self.online_peer:
             self.peers_with_file[file_name].add(peer)
-
+            # file name : 1 2 3 4
 
         # Create magnet link
         magnet_link = create_magnet_link(metainfo, HOST, PORT)
